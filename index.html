@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repertório Missa</title>
+    <link rel="icon" type="image/x-icon" href="ico.musica.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+        }
+
+        #app {
+            max-width: 90%;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        #file-select {
+            margin-bottom: 20px;
+        }
+
+        .pdf-btn {
+            display: block;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            border: 1px solid #c7c6db;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            color: #333;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 90%;
+            margin-left: 5%;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pdf-btn:hover {
+            background-color: #b5e3f5;
+        }
+
+        .pdf-btn:active {
+            background-color: #a0e0b3;
+        }
+
+        #generate-btn,
+        #clear-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 45%;
+            margin: 10px;
+        }
+
+        #generate-btn {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #generate-btn:hover {
+            background-color: #08396e;
+        }
+
+        #clear-btn {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        #clear-btn:hover {
+            background-color: #c82333;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        #download-link {
+            display: none;
+        }
+
+        /* Estilos para dispositivos móveis */
+        @media only screen and (max-width: 600px) {
+            .pdf-btn,
+            #generate-btn,
+            #clear-btn {
+                width: 90%;
+                margin-left: 5%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <h1>Repertório Missa</h1>
+    <div id="file-select">
+        <input type="file" id="pdf-files" accept=".pdf" multiple style="display: none;">
+    </div>
+    <div id="buttons">
+        <button class="pdf-btn" data-title="Entrada">Entrada</button>
+        <button class="pdf-btn" data-title="Ato Penitencial">Ato Penitencial</button>
+        <button class="pdf-btn" data-title="Glória">Glória</button>
+        <button class="pdf-btn" data-title="Salmo">Salmo</button>
+        <button class="pdf-btn" data-title="Aclamação">Aclamação</button>
+        <button class="pdf-btn" data-title="Preces">Preces</button>
+        <button class="pdf-btn" data-title="Ofertório">Ofertório</button>
+        <button class="pdf-btn" data-title="Oração Eucarística">Oração Eucarística</button>
+        <button class="pdf-btn" data-title="Santo">Santo</button>
+        <button class="pdf-btn" data-title="Amém">Amém</button>
+        <button class="pdf-btn" data-title="Cordeiro">Cordeiro</button>
+        <button class="pdf-btn" data-title="Comunhão">Comunhão</button>
+        <button class="pdf-btn" data-title="Ação de Graças">Ação de Graças</button>
+        <button class="pdf-btn" data-title="Final">Final</button>
+    </div>
+    <button id="generate-btn">Gerar Repertório</button>
+    <button id="clear-btn">Novo Repertório</button>
+    <a href="#" id="download-link">Download Repertório</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.0/dist/pdf-lib.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const generateBtn = document.getElementById("generate-btn");
+        const clearBtn = document.getElementById("clear-btn");
+        const pdfFilesInput = document.getElementById("pdf-files");
+        const downloadLink = document.getElementById("download-link");
+        let selectedFiles = [];
+
+        const pdfBtns = document.querySelectorAll(".pdf-btn");
+        pdfBtns.forEach(btn => {
+            btn.addEventListener("click", function() {
+                const title = this.getAttribute("data-title");
+                pdfFilesInput.dataset.currentButton = title;
+                pdfFilesInput.click();
+            });
+        });
+
+        pdfFilesInput.addEventListener("change", async function() {
+            const title = pdfFilesInput.dataset.currentButton;
+            const files = Array.from(pdfFilesInput.files);
+            for (const file of files) {
+                const fileReader = new FileReader();
+                fileReader.onload = function(event) {
+                    selectedFiles.push({ title, data: event.target.result, name: file.name });
+                    updateButtonLabel(title, file.name);
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+        });
+
+        function updateButtonLabel(title, fileName) {
+            const btn = document.querySelector(`.pdf-btn[data-title="${title}"]`);
+            btn.textContent = `Load '${title}' PDF - ${fileName}`;
+            btn.style.backgroundColor = "#99f3b4";
+        }
+
+        generateBtn.addEventListener("click", async function() {
+            if (selectedFiles.length < 2) {
+                alert("Por favor, selecione pelo menos dois arquivos PDF.");
+                return;
+            }
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const fileData = selectedFiles[i].data;
+                const tempDoc = await PDFLib.PDFDocument.load(fileData);
+                const copiedPages = await pdfDoc.copyPages(tempDoc, tempDoc.getPageIndices());
+                copiedPages.forEach((page) => pdfDoc.addPage(page));
+            }
+            const mergedPdfBytes = await pdfDoc.save();
+            const blob = new Blob([mergedPdfBytes], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.download = prompt("Digite o nome do arquivo:", "Repertorio_Missa.pdf");
+            downloadLink.style.display = "inline-block";
+
+            // Compartilhar via WhatsApp
+            const whatsappURL = `whatsapp://send?text=Compartilhando repertório da missa! *${downloadLink.download}* ${encodeURIComponent(url)}`;
+            const whatsappBtn = document.createElement("a");
+            whatsappBtn.href = whatsappURL;
+            whatsappBtn.textContent = "Compartilhar via WhatsApp";
+            whatsappBtn.style.display = "block";
+            whatsappBtn.style.marginTop = "10px";
+            document.getElementById("app").appendChild(whatsappBtn);
+        });
+
+        clearBtn.addEventListener("click", function() {
+            selectedFiles = [];
+            const pdfBtns = document.querySelectorAll(".pdf-btn");
+            pdfBtns.forEach(btn => {
+                btn.textContent = btn.getAttribute("data-title");
+                btn.style.backgroundColor = "#f9f9f9";
+            });
+            pdfFilesInput.value = null;
+            downloadLink.style.display = "none";
+            const whatsappBtn = document.querySelector("a[href^='whatsapp://send']");
+            if (whatsappBtn) {
+                whatsappBtn.remove();
+            }
+        });
+    });
+</script>
+</body>
+</html>
